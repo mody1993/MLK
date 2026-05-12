@@ -7,8 +7,8 @@ const settings = {
     secret: process.env.U_PASS || 'your_password',
     taskGroupId: 224,
     depositGroupId: 224 ,
-    minuteInterval: 303 * 1000,
-    boxInterval: 30 * 60 * 1000
+    minuteInterval: 63 * 1000,
+    boxInterval: 3 * 60 * 1000
 };
 
 const MY_INFO = {
@@ -147,7 +147,7 @@ service.on('ready', async () => {
         setInterval(() => {
             if (canOpenBoxes && !isPaused) {
                 lastBoxCommandTime = Date.now();
-                service.messaging.sendGroupMessage(settings.taskGroupId, ".. ");
+                service.messaging.sendGroupMessage(settings.taskGroupId, "!مد صندوق فتح ");
             }
         }, settings.boxInterval);
     } catch (e) {}
