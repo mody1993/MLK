@@ -37,7 +37,7 @@ async function startAutomation() {
         } catch (err) {
             console.error("❌ خطأ في الأتمتة:", err.message);
         }
-        await sleep(306000); // انتظار 66 ثانية للدورة التالية
+        await sleep(64000); // انتظار 66 ثانية للدورة التالية
         runCycle();
     }
     runCycle();
