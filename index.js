@@ -2,51 +2,101 @@ import 'dotenv/config';
 import wolfjs from 'wolf.js';
 import sharp from 'sharp';
 import { createWorker } from 'tesseract.js';
+import fetch from 'node-fetch';
 
 const { WOLF } = wolfjs;
 const client = new WOLF();
 
 // --- الإعدادات ---
-const TARGET_USER_ID = 80055399 ;
-const CHANNEL_TASKS = 81889058;
-const CHANNEL_ALLIANCE = 81889058;
+const TARGET_USER_ID = 76023604;
+const CHANNEL_TASKS = 224;
+const CHANNEL_ALLIANCE = 224;
 const ALLOWED_PLAYERS = ['أوكسجينه', 'أوكسجيته', 'أوكسجيئه'];
 
-// --- متغيرات النظام ---
-let isSystemActive = false; 
+// --- متغيرات الحالة ---
+let isSystemActive = false;
+let isFarming = false; 
 let b = null; 
+let waitingForData = false;
+let dataReceived = false;
 
-// --- دالة إرسال أمر الصندوق (للاستدعاء المتكرر) ---
-async function sendBoxCommand() {
-    try {
-        console.log(`[LOG] 📤 إرسال طلب !مد صندوق (فحص الحالة)...`);
-        await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق');
-    } catch (e) { console.error(`[ERROR] فشل إرسال أمر الصندوق: ${e.message}`); }
+// --- 1. نظام طلب الحالة مع إعادة المحاولة ---
+async function sendRequestWithRetry() {
+    waitingForData = true;
+    dataReceived = false;
+    
+    console.log("[LOG] 📤 جارٍ طلب بيانات الصناديق...");
+    await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق');
+    
+    // انتظر 4 ثوانٍ للتأكد من وصول البيانات، إذا لم تصل، انتظر 10 ثوانٍ وأعد المحاولة
+    setTimeout(async () => {
+        if (!dataReceived && waitingForData) {
+            console.log("[LOG] ⏳ لم تصل البيانات خلال 4 ثوانٍ. إعادة المحاولة بعد 10 ثوانٍ...");
+            setTimeout(sendRequestWithRetry, 10000);
+        }
+    }, 4000);
 }
 
-// --- دالة المهام ---
+// --- 2. نظام الزراعة الذكي (المنطق الرياضي) ---
+async function executeFarmingStrategy(gold, silver, bronze, currentPoints, status) {
+    if (isFarming) return;
+    const isReady = status.includes('جاهز');
+
+    // شرط التوقف: إذا الحالة جاهز والنقاط كافية (>= 40)
+    if (isReady && currentPoints >= 40) return;
+
+    isFarming = true;
+    console.log(`[LOG] 🧮 بدء الزراعة: الحالة (${status}) | النقاط: ${currentPoints}/50`);
+
+    let p = currentPoints;
+    let g = gold, s = silver, b = bronze;
+    let queue = [];
+
+    // خوارزمية الحساب
+    while (g > 0 || s > 0 || b > 0) {
+        // إذا جاهز: نتوقف عند وصول النقاط لـ 40
+        if (isReady && p >= 40) break;
+
+        if (g > 0) { queue.push('!مد صندوق فتح ذهبي'); g--; p += 4; }
+        else if (s > 0) { queue.push('!مد صندوق فتح فضي'); s--; p += 2; }
+        else if (b > 0) { queue.push('!مد صندوق فتح برونزي'); b--; p += 1; }
+        else break;
+    }
+
+    if (queue.length === 0) {
+        isFarming = false;
+        return;
+    }
+
+    console.log(`[LOG] 📋 الخطة: سيتم فتح ${queue.length} صندوق.`);
+    
+    for (const cmd of queue) {
+        await client.messaging.sendGroupMessage(CHANNEL_TASKS, cmd);
+        console.log(`[LOG] ⏳ تنفيذ: ${cmd}. انتظار 20ث...`);
+        await new Promise(r => setTimeout(r, 20000));
+    }
+
+    isFarming = false;
+    console.log("[LOG] ✅ انتهت عملية الزراعة.");
+}
+
+// --- 3. إدارة المهام ---
 async function performTasks() {
-    console.log(`[LOG] 🚀 بدء دورة المهام.`);
     try {
         await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد مهام');
-        await new Promise(r => setTimeout(r, 2000)); // تأخير ثانيتين
+        await new Promise(r => setTimeout(r, 2000));
         await client.messaging.sendGroupMessage(CHANNEL_ALLIANCE, '!مد تحالف ايداع كل');
     } catch (e) { console.error(`[ERROR] ${e.message}`); }
 }
 
-// --- إدارة المؤقت ---
 function manageTimer() {
     let intervalMs = isSystemActive ? 64000 : 306000;
-    
     if (b) clearInterval(b);
-    
-    console.log(`[LOG] ⚙️ تحليل القرار: الحالة ${isSystemActive ? 'نشطة' : 'خاملة'}. المؤقت مضبوط كل ${intervalMs/1000} ثانية.`);
-    
     performTasks(); 
     b = setInterval(performTasks, intervalMs);
 }
 
-// --- دوال الكابتشا ---
+// --- 4. دوال الكابتشا ---
 async function isCaptchaByColor(buffer) {
     const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
     let redPixels = 0;
@@ -105,48 +155,59 @@ client.on('groupMessage', async (message) => {
             const name = await extractPlayerName(buffer);
             if (ALLOWED_PLAYERS.some(p => name.toLowerCase().includes(p.toLowerCase()))) {
                 const code = await solveCaptcha(buffer);
-                if (code) {
-                    console.log(`[LOG] ✅ تم حل الكابتشا: ${code}`);
-                    await client.messaging.sendGroupMessage(message.targetGroupId, `#${code}`);
-                }
+                if (code) await client.messaging.sendGroupMessage(message.targetGroupId, `#${code}`);
             }
-        } catch (err) { console.error("⚠️ خطأ في الكابتشا:", err.message); }
+        } catch (err) { console.error("⚠️ خطأ كابتشا:", err.message); }
         return;
     }
 
-    // 2. معالجة النصوص (تحديث الحالة)
+    // 2. معالجة بيانات الصناديق والزراعة
     if (message.sourceSubscriberId !== TARGET_USER_ID) return;
     
     const body = message.body;
-    const timeMatch = body.match(/الجهاز الزمني[:\s]+(.*)/);
-    const guaranteeMatch = body.match(/حالة الضمان[:\s]+(.*)/);
+    const gMatch = body.match(/ذهبي:\s*(\d+)/);
+    const pMatch = body.match(/نقاط الضمان:\s*(\d+)/);
+    const statusMatch = body.match(/حالة الضمان:\s*(.*)/);
 
-    if (timeMatch) {
-        const timeStatus = timeMatch[1].trim();
-        let isReady = guaranteeMatch ? guaranteeMatch[1].includes('جاهز') : false;
+    if (gMatch && pMatch && statusMatch) {
+        dataReceived = true; // تم استلام البيانات
+        waitingForData = false;
+        
+        const gold = parseInt(gMatch[1]);
+        const silver = parseInt(body.match(/فضي:\s*(\d+)/)[1]);
+        const bronze = parseInt(body.match(/برونزي:\s*(\d+)/)[1]);
+        const points = parseInt(pMatch[1]);
+        const status = statusMatch[1].trim();
 
-        console.log(`[LOG] 🔎 فحص الحالة: [${timeStatus}]`);
+        // تنفيذ الزراعة
+        await executeFarmingStrategy(gold, silver, bronze, points, status);
 
+        // ضبط المؤقتات
+        const timeMatch = body.match(/الجهاز الزمني:\s*(.*)/);
+        const timeStatus = timeMatch ? timeMatch[1].trim() : "";
+        
         if (timeStatus.includes('س') || timeStatus.includes('د')) {
-            isSystemActive = true; 
-        } 
-        else if (timeStatus.includes('غير نشط')) {
-            if (isReady) {
-                await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق ضمان وقت');
-                isSystemActive = true; 
-            } else {
-                isSystemActive = false; 
-            }
+            isSystemActive = true;
+        } else if (timeStatus.includes('غير نشط') && status === "جاهز") {
+            await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق ضمان وقت');
+            isSystemActive = true;
+        } else {
+            isSystemActive = false;
         }
-        manageTimer(); // تحديث المؤقت بناءً على الحالة الجديدة
+        manageTimer();
     }
 });
 
-// --- التشغيل ---
 client.on('ready', () => {
-    console.log("🚀 البوت متصل. إرسال أمر الفحص الأول...");
-    sendBoxCommand(); // <--- التعديل المطلوب
-    manageTimer();    // تشغيل بدائي، سيتم تحديثه فور وصول رد الصندوق
+    console.log("🚀 البوت متصل ومستعد.");
+    
+    // الطلب الأول
+    sendRequestWithRetry();
+    
+    // تكرار الطلب كل 30 دقيقة
+    setInterval(sendRequestWithRetry, 30 * 60 * 1000);
+    
+    manageTimer();
 });
 
 client.login(process.env.U_MAIL, process.env.U_PASS);
