@@ -13,49 +13,26 @@ const CHANNEL_TASKS = 224;
 const CHANNEL_ALLIANCE = 224;
 const ALLOWED_PLAYERS = ['أوكسجينه', 'أوكسجيته', 'أوكسجيئه'];
 
-// --- متغيرات الحالة ---
-let isSystemActive = false;
-let isFarming = false; 
+// --- متغيرات النظام ---
+let isSystemActive = false; 
+let isFarming = false; // متغير لمنع تداخل عمليات الزراعة
 let b = null; 
-let waitingForData = false;
-let dataReceived = false;
 
-// --- 1. نظام طلب الحالة مع إعادة المحاولة ---
-async function sendRequestWithRetry() {
-    waitingForData = true;
-    dataReceived = false;
-    
-    console.log("[LOG] 📤 جارٍ طلب بيانات الصناديق...");
-    await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق');
-    
-    // انتظر 4 ثوانٍ للتأكد من وصول البيانات، إذا لم تصل، انتظر 10 ثوانٍ وأعد المحاولة
-    setTimeout(async () => {
-        if (!dataReceived && waitingForData) {
-            console.log("[LOG] ⏳ لم تصل البيانات خلال 4 ثوانٍ. إعادة المحاولة بعد 10 ثوانٍ...");
-            setTimeout(sendRequestWithRetry, 10000);
-        }
-    }, 4000);
-}
-
-// --- 2. نظام الزراعة الذكي (المنطق الرياضي) ---
-async function executeFarmingStrategy(gold, silver, bronze, currentPoints, status) {
+// --- منطق زراعة الصناديق (10 ثواني) ---
+async function executeFarming(gold, silver, bronze, currentPoints, status) {
     if (isFarming) return;
-    const isReady = status.includes('جاهز');
-
-    // شرط التوقف: إذا الحالة جاهز والنقاط كافية (>= 40)
-    if (isReady && currentPoints >= 40) return;
-
     isFarming = true;
-    console.log(`[LOG] 🧮 بدء الزراعة: الحالة (${status}) | النقاط: ${currentPoints}/50`);
-
+    
+    const isReady = status.includes('جاهز');
     let p = currentPoints;
     let g = gold, s = silver, b = bronze;
     let queue = [];
 
-    // خوارزمية الحساب
+    // الحساب الرياضي:
+    // إذا "غير جاهز": نفتح كل شيء حتى تنفذ الصناديق.
+    // إذا "جاهز": نفتح فقط حتى نصل إلى 40-45 نقطة ثم نتوقف.
     while (g > 0 || s > 0 || b > 0) {
-        // إذا جاهز: نتوقف عند وصول النقاط لـ 40
-        if (isReady && p >= 40) break;
+        if (isReady && p >= 40) break; // شرط التوقف في حالة "جاهز"
 
         if (g > 0) { queue.push('!مد صندوق فتح ذهبي'); g--; p += 4; }
         else if (s > 0) { queue.push('!مد صندوق فتح فضي'); s--; p += 2; }
@@ -63,25 +40,20 @@ async function executeFarmingStrategy(gold, silver, bronze, currentPoints, statu
         else break;
     }
 
-    if (queue.length === 0) {
-        isFarming = false;
-        return;
+    if (queue.length > 0) {
+        console.log(`[LOG] 🚜 بدء الزراعة: سيتم فتح ${queue.length} صندوق.`);
+        for (const cmd of queue) {
+            await client.messaging.sendGroupMessage(CHANNEL_TASKS, cmd);
+            await new Promise(r => setTimeout(r, 10000)); // 10 ثوانٍ كما طلبت
+        }
+        console.log("[LOG] ✅ انتهت عملية الزراعة.");
     }
-
-    console.log(`[LOG] 📋 الخطة: سيتم فتح ${queue.length} صندوق.`);
-    
-    for (const cmd of queue) {
-        await client.messaging.sendGroupMessage(CHANNEL_TASKS, cmd);
-        console.log(`[LOG] ⏳ تنفيذ: ${cmd}. انتظار 20ث...`);
-        await new Promise(r => setTimeout(r, 20000));
-    }
-
     isFarming = false;
-    console.log("[LOG] ✅ انتهت عملية الزراعة.");
 }
 
-// --- 3. إدارة المهام ---
+// --- دالة المهام ---
 async function performTasks() {
+    console.log(`[LOG] 🚀 بدء دورة المهام.`);
     try {
         await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد مهام');
         await new Promise(r => setTimeout(r, 2000));
@@ -89,6 +61,7 @@ async function performTasks() {
     } catch (e) { console.error(`[ERROR] ${e.message}`); }
 }
 
+// --- إدارة المؤقت ---
 function manageTimer() {
     let intervalMs = isSystemActive ? 64000 : 306000;
     if (b) clearInterval(b);
@@ -96,7 +69,7 @@ function manageTimer() {
     b = setInterval(performTasks, intervalMs);
 }
 
-// --- 4. دوال الكابتشا ---
+// --- دوال الكابتشا (تم الإبقاء عليها كما هي) ---
 async function isCaptchaByColor(buffer) {
     const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
     let redPixels = 0;
@@ -144,7 +117,7 @@ async function solveCaptcha(buffer) {
 
 // --- معالجة الرسائل ---
 client.on('groupMessage', async (message) => {
-    // 1. منطق الكابتشا
+    // 1. الكابتشا
     const isTargetChannel = (message.targetGroupId === CHANNEL_TASKS || message.targetGroupId === CHANNEL_ALLIANCE);
     if (isTargetChannel && message.sourceSubscriberId == TARGET_USER_ID && message.type === 'text/image_link') {
         try {
@@ -155,58 +128,71 @@ client.on('groupMessage', async (message) => {
             const name = await extractPlayerName(buffer);
             if (ALLOWED_PLAYERS.some(p => name.toLowerCase().includes(p.toLowerCase()))) {
                 const code = await solveCaptcha(buffer);
-                if (code) await client.messaging.sendGroupMessage(message.targetGroupId, `#${code}`);
+                if (code) {
+                    console.log(`[LOG] ✅ تم حل الكابتشا: ${code}`);
+                    await client.messaging.sendGroupMessage(message.targetGroupId, `#${code}`);
+                }
             }
         } catch (err) { console.error("⚠️ خطأ كابتشا:", err.message); }
         return;
     }
 
-    // 2. معالجة بيانات الصناديق والزراعة
+    // 2. تحليل الرسائل (الصناديق + المهام)
     if (message.sourceSubscriberId !== TARGET_USER_ID) return;
     
     const body = message.body;
+
+    // أ) تحليل بيانات الصناديق (إذا وجدت في الرسالة)
     const gMatch = body.match(/ذهبي:\s*(\d+)/);
-    const pMatch = body.match(/نقاط الضمان:\s*(\d+)/);
+    const sMatch = body.match(/فضي:\s*(\d+)/);
+    const bMatch = body.match(/برونزي:\s*(\d+)/);
+    const pMatch = body.match(/نقاط الضمان:\s*(\d+)\/50/);
     const statusMatch = body.match(/حالة الضمان:\s*(.*)/);
 
     if (gMatch && pMatch && statusMatch) {
-        dataReceived = true; // تم استلام البيانات
-        waitingForData = false;
-        
         const gold = parseInt(gMatch[1]);
-        const silver = parseInt(body.match(/فضي:\s*(\d+)/)[1]);
-        const bronze = parseInt(body.match(/برونزي:\s*(\d+)/)[1]);
+        const silver = parseInt(sMatch[1]);
+        const bronze = parseInt(bMatch[1]);
         const points = parseInt(pMatch[1]);
         const status = statusMatch[1].trim();
 
-        // تنفيذ الزراعة
-        await executeFarmingStrategy(gold, silver, bronze, points, status);
+        console.log(`[LOG] 📊 الحالة: ${points}/50 | ${status}`);
+        executeFarming(gold, silver, bronze, points, status);
+    }
 
-        // ضبط المؤقتات
-        const timeMatch = body.match(/الجهاز الزمني:\s*(.*)/);
-        const timeStatus = timeMatch ? timeMatch[1].trim() : "";
-        
+    // ب) تحليل التوقيت والمهام
+    const timeMatch = body.match(/الجهاز الزمني[:\s]+(.*)/);
+    if (timeMatch) {
+        const timeStatus = timeMatch[1].trim();
+        let isReady = statusMatch ? statusMatch[1].includes('جاهز') : false;
+
         if (timeStatus.includes('س') || timeStatus.includes('د')) {
-            isSystemActive = true;
-        } else if (timeStatus.includes('غير نشط') && status === "جاهز") {
-            await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق ضمان وقت');
-            isSystemActive = true;
-        } else {
-            isSystemActive = false;
+            isSystemActive = true; 
+        } 
+        else if (timeStatus.includes('غير نشط')) {
+            if (isReady) {
+                await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق ضمان وقت');
+                isSystemActive = true; 
+            } else {
+                isSystemActive = false; 
+            }
         }
         manageTimer();
     }
 });
 
+// --- التشغيل ---
 client.on('ready', () => {
-    console.log("🚀 البوت متصل ومستعد.");
+    console.log("🚀 البوت متصل.");
     
-    // الطلب الأول
-    sendRequestWithRetry();
+    // إرسال طلب الحالة الأول
+    client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق');
     
-    // تكرار الطلب كل 30 دقيقة
-    setInterval(sendRequestWithRetry, 30 * 60 * 1000);
-    
+    // جدولة طلب الحالة كل 30 دقيقة
+    setInterval(() => {
+        client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق');
+    }, 1800000); 
+
     manageTimer();
 });
 
