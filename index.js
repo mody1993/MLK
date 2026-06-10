@@ -170,24 +170,15 @@ function createBotInstance(config) {
 
                     const body = message.body;
 
-                    // =====================================================
-                    // 📌 هنا يتم معالجة “الجهاز الزمني” بشكل صحيح
-                    // =====================================================
-
-                    // نقسم الرسالة إلى أسطر عشان نقرأ كل جزء بدقة
                     const lines = body.split('\n');
-
-                    // نبحث عن سطر الجهاز الزمني
                     const timerLine = lines.find(l => l.includes('الجهاز الزمني'));
 
                     let tempTimer = 0;
 
-                    // إذا الجهاز الزمني موجود وفيه وقت (يعني نشط)
                     const isTimerActive = timerLine && !timerLine.includes("غير نشط");
 
                     if (isTimerActive) {
 
-                        // استخراج الساعات / الدقائق / الثواني
                         const h = timerLine.match(/(\d+)س/);
                         const m = timerLine.match(/(\d+)د/);
                         const s = timerLine.match(/(\d+)ث/);
@@ -198,21 +189,16 @@ function createBotInstance(config) {
 
                     } else {
 
-                        // ❗ إذا الجهاز الزمني غير نشط
-                        // نقوم بتفعيل صندوق ضمان الوقت تلقائياً
                         await bot.messaging.sendGroupMessage(
                             CHANNEL_ID,
                             '!مد صندوق ضمان وقت'
                         );
 
-                        // تعيين وقت افتراضي (3 ساعات)
                         tempTimer = 3 * 60 * 60;
                     }
 
-                    // حفظ التايمر داخل البوت
                     globalTimer = tempTimer;
 
-                    // إنهاء الاستماع بعد معالجة الرسالة
                     bot.removeListener('groupMessage', handler);
                     resolve();
                 }
@@ -227,7 +213,7 @@ function createBotInstance(config) {
         });
     }
 
-    // ============ LOOP ============
+    // ============ LOOP (🔥 MODIFIED) ============
     async function startTaskLoop() {
 
         while (true) {
@@ -238,12 +224,17 @@ function createBotInstance(config) {
 
                 await bot.messaging.sendGroupMessage(CHANNEL_ID, '!مد تحالف ايداع كل');
 
+                let delay;
+
                 if (globalTimer > 0) {
-                    globalTimer = Math.max(0, globalTimer - 64);
-                    await new Promise(r => setTimeout(r, 64000));
+                    delay = 63; // 1 دقيقة + 3 ثواني
+                    globalTimer = Math.max(0, globalTimer - delay);
                 } else {
-                    await new Promise(r => setTimeout(r, 306000));
+                    delay = 303; // 5 دقائق + 3 ثواني
+                    await sendBoxCommand();
                 }
+
+                await new Promise(r => setTimeout(r, delay * 1000));
 
             } catch (e) {
                 console.error(`[${config.email}]`, e.message);
