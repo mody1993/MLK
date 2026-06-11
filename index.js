@@ -1,4 +1,10 @@
+import 'dotenv/config';
+import wolfjs from 'wolf.js';
+import sharp from 'sharp';
+import { createWorker } from 'tesseract.js';
+import fetch from 'node-fetch';
 
+const { WOLF } = wolfjs;
 
 // ================== ACCOUNTS ==================
 const ACCOUNTS = [
@@ -28,7 +34,6 @@ function formatAnswer(text) {
 function createBot(config) {
 
     const client = new WOLF();
-
     let globalTimer = 0;
 
     // ================= CAPTCHA =================
@@ -56,7 +61,6 @@ function createBot(config) {
 
             const match = text.match(/اللاعب[:\s]+([^\n\r]+)/u);
             return match ? match[1].trim() : "";
-
         } catch {
             return "";
         }
@@ -106,19 +110,46 @@ function createBot(config) {
             await new Promise(r => setTimeout(r, 8000));
         };
 
+        // غير جاهز => فتح كل الصناديق
         if (notReady) {
-            while (g--) await send('!مد صندوق فتح ذهبي');
-            while (s--) await send('!مد صندوق فتح فضي');
-            while (b--) await send('!مد صندوق فتح برونزي');
+
+            while (g > 0) {
+                await send('!مد صندوق فتح ذهبي');
+                g--;
+            }
+
+            while (s > 0) {
+                await send('!مد صندوق فتح فضي');
+                s--;
+            }
+
+            while (b > 0) {
+                await send('!مد صندوق فتح برونزي');
+                b--;
+            }
+
             return;
         }
 
-        let need = 42 - points;
+        // جاهز => حتى 42
+        let need = Math.max(0, 42 - points);
 
         while (need > 0) {
-            if (need >= 4 && g > 0) { await send('!مد صندوق فتح ذهبي'); g--; need -= 4; }
-            else if (need >= 2 && s > 0) { await send('!مد صندوق فتح فضي'); s--; need -= 2; }
-            else if (need >= 1 && b > 0) { await send('!مد صندوق فتح برونزي'); b--; need -= 1; }
+            if (need >= 4 && g > 0) {
+                await send('!مد صندوق فتح ذهبي');
+                g--;
+                need -= 4;
+            }
+            else if (need >= 2 && s > 0) {
+                await send('!مد صندوق فتح فضي');
+                s--;
+                need -= 2;
+            }
+            else if (need >= 1 && b > 0) {
+                await send('!مد صندوق فتح برونزي');
+                b--;
+                need -= 1;
+            }
             else break;
         }
     }
@@ -144,19 +175,23 @@ function createBot(config) {
                     const boxes = body.match(/برونزي:\s*(\d+)\s*\|\s*فضي:\s*(\d+)\s*\|\s*ذهبي:\s*(\d+)/);
                     const points = body.match(/نقاط الضمان:\s*(\d+)\/50/);
 
-                    await processBox(
-                        boxes ? +boxes[3] : 0,
-                        boxes ? +boxes[2] : 0,
-                        boxes ? +boxes[1] : 0,
-                        points ? +points[1] : 0,
-                        notReady
-                    );
+                    const g = boxes ? +boxes[3] : 0;
+                    const s = boxes ? +boxes[2] : 0;
+                    const b = boxes ? +boxes[1] : 0;
+                    const p = points ? +points[1] : 0;
+
+                    await processBox(g, s, b, p, notReady);
 
                     const timerLine = body.split('\n').find(l => l.includes('الجهاز الزمني'));
 
                     let temp = 0;
 
-                    if (timerLine && !timerLine.includes("غير نشط")) {
+                    if (timerLine?.includes('موقوف')) {
+
+                        await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد تشغيل');
+
+                    } else if (timerLine && !timerLine.includes("غير نشط")) {
+
                         const h = timerLine.match(/(\d+)س/);
                         const m = timerLine.match(/(\d+)د/);
                         const s = timerLine.match(/(\d+)ث/);
@@ -166,6 +201,7 @@ function createBot(config) {
                         if (s) temp += +s[1];
 
                     } else if (!notReady) {
+
                         await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق ضمان وقت');
                         temp = 3 * 3600;
                     }
@@ -243,10 +279,12 @@ function createBot(config) {
     });
 
     client.on('ready', async () => {
+
         console.log(`✅ Logged in: ${config.email}`);
 
         await sendBoxCommand();
-        setInterval(sendBoxCommand, 30 * 60 * 1000);
+
+        setInterval(sendBoxCommand, 25 * 60 * 1000);
 
         loop();
     });
