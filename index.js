@@ -290,32 +290,96 @@ const TARGET_USER_ID = config.targetUserId;
     // ================== EVENTS ==================
     client.on('groupMessage', async (message) => {
 
-        if (
-            message.sourceSubscriberId !== TARGET_USER_ID ||
-            message.targetGroupId !== CHANNEL_ID
-        ) return;
+    if (
+        message.sourceSubscriberId !== TARGET_USER_ID ||
+        message.targetGroupId !== CHANNEL_ID
+    ) return;
 
-        try {
+    try {
 
-            const res = await fetch(message.body);
-            const buffer = Buffer.from(await res.arrayBuffer());
+        console.log("========== NEW MESSAGE ==========");
+        console.log(JSON.stringify(message, null, 2));
 
-            if (!(await isCaptchaByColor(buffer))) return;
+        let imageUrl = null;
 
-            const player = await extractPlayerName(buffer);
-
-            if (!config.allowedPlayers.some(p => player.includes(p))) return;
-
-            const code = await solveCaptcha(buffer);
-
-            if (!code) return;
-
-            await client.messaging.sendGroupMessage(CHANNEL_ID, formatAnswer(code));
-
-        } catch (e) {
-            console.error(`[${config.email}] captcha error`, e.message);
+        if (typeof message.body === "string" && message.body.startsWith("http")) {
+            imageUrl = message.body;
         }
-    });
+
+        if (message.imageUrl) {
+            imageUrl = message.imageUrl;
+        }
+
+        if (message.url) {
+            imageUrl = message.url;
+        }
+
+        if (
+            message.attachment &&
+            typeof message.attachment.url === "string"
+        ) {
+            imageUrl = message.attachment.url;
+        }
+
+        if (!imageUrl) {
+            console.log("❌ No image URL found");
+            return;
+        }
+
+        console.log("✅ Image URL:", imageUrl);
+
+        const res = await fetch(imageUrl);
+
+        if (!res.ok) {
+            console.log("❌ Download failed:", res.status);
+            return;
+        }
+
+        const buffer = Buffer.from(await res.arrayBuffer());
+
+        if (!(await isCaptchaByColor(buffer))) {
+            console.log("❌ Not captcha image");
+            return;
+        }
+
+        const player = await extractPlayerName(buffer);
+
+        console.log("PLAYER =", player);
+
+        if (
+            !config.allowedPlayers.some(
+                p => player.toUpperCase().includes(p.toUpperCase())
+            )
+        ) {
+            console.log("❌ Player not assigned to this account");
+            return;
+        }
+
+        const code = await solveCaptcha(buffer);
+
+        console.log("CODE =", code);
+
+        if (!code) {
+            console.log("❌ OCR failed");
+            return;
+        }
+
+        const answer = formatAnswer(code);
+
+        console.log("✅ SEND =", answer);
+
+        await client.messaging.sendGroupMessage(
+            CHANNEL_ID,
+            answer
+        );
+
+    } catch (e) {
+        console.error(
+            `[${config.email}] captcha error`,
+            e.message
+        );
+    }
+});
 
     client.on('ready', async () => {
 
