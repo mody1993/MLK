@@ -1,10 +1,3 @@
-import 'dotenv/config';
-import wolfjs from 'wolf.js';
-import sharp from 'sharp';
-import { createWorker } from 'tesseract.js';
-import fetch from 'node-fetch';
-
-const { WOLF } = wolfjs;
 
 // ================== ACCOUNTS ==================
 const ACCOUNTS = [
