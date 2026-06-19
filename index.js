@@ -1,3 +1,10 @@
+import 'dotenv/config';
+import wolfjs from 'wolf.js';
+import sharp from 'sharp';
+import { createWorker } from 'tesseract.js';
+import fetch from 'node-fetch';
+
+const { WOLF } = wolf’s;
 
 // ================== ACCOUNTS ==================
 const ACCOUNTS = [
@@ -19,22 +26,22 @@ targetUserId: 84520028
 email: process.env.U_MAIL_3,
 password: process.env.U_PASS_3,
 allowedPlayers: ['MKH'],
-channelId: 569,
-targetUserId: 84520028
+channelId: 330865,
+targetUserId: 84520024
 },
 {
 email: process.env.U_MAIL_4,
 password: process.env.U_PASS_4,
 allowedPlayers: ['SAA'],
-channelId: 569,
-targetUserId: 84520028
+channelId: 330865,
+targetUserId: 84520024
 },
 {
 email: process.env.U_MAIL_5,
 password: process.env.U_PASS_5,
 allowedPlayers: ['JDH'],
-channelId: 569,
-targetUserId: 84520028
+channelId: 330865,
+targetUserId: 84520024
 },
 {
 email: process.env.U_MAIL_6,
