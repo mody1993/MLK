@@ -49,4 +49,19 @@ jobs:
           U_MAIL_6: ${{ secrets.U_MAIL_6 }}
           U_PASS_6: ${{ secrets.U_PASS_6 }}
 
+          U_MAIL_7: ${{ secrets.U_MAIL_7 }}
+          U_PASS_7: ${{ secrets.U_PASS_7 }}
+
+          U_MAIL_8: ${{ secrets.U_MAIL_8 }}
+          U_PASS_8: ${{ secrets.U_PASS_8 }}
+
+          U_MAIL_9: ${{ secrets.U_MAIL_9 }}
+          U_PASS_9: ${{ secrets.U_PASS_9 }}
+
+          U_MAIL_10: ${{ secrets.U_MAIL_10 }}
+          U_PASS_10: ${{ secrets.U_PASS_10 }}
+
+          U_MAIL_11: ${{ secrets.U_MAIL_11 }}
+          U_PASS_11: ${{ secrets.U_PASS_11 }}
+
         run: node index.js
