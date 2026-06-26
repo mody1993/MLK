@@ -1,279 +1,99 @@
 import 'dotenv/config';
 import wolfjs from 'wolf.js';
-import sharp from 'sharp';
-import { createWorker } from 'tesseract.js';
-import fetch from 'node-fetch';
 
 const { WOLF } = wolfjs;
 
-// ================== room ==================
-// qsr
-// channelId: 569,
-// targetUserId: 84520028
-// وك
-// channelId:74000,
-// targetUserId:84520029
-// لحن الالعاب 
-// channelId:13219769,
-// targetUserId:76023171
-// لو 
-// channelId:17614046,
-// targetUserId:76023150
-// العاب 
-// channelId:330865,
-// targetUserId:84520024
-// ================== ACCOUNTS ==================
+// ================== 🎛️ CONTROL PANEL (المتحكم الرئيسي) ==================
 
+// 1. الإعدادات الرئيسية الافتراضية (لكل الحسابات)
+const MAIN_ROOM = {
+    channelId: 569,     // الغرفة الرئيسية
+    targetUserId: 84520028   // مرسل الكابتشا الرئيسي (حساب اللعبة)
+};
+
+// 2. إعدادات الغرفة الفرعية/الثانية
+const SECOND_ROOM = {
+    channelId: 569,          // الغرفة الثانية
+    targetUserId: 84520028   // مرسل الكابتشا الثاني
+};
+
+// 3. 🎯 ضع هنا فقط أسماء الحسابات التي تريد نقلها للغرفة الثانية!
+// أي اسم ليس موجوداً هنا، سيعمل تلقائياً في الغرفة الرئيسية (MAIN_ROOM)
+const SPECIAL_ROOM_USERS = [];
+
+// =========================================================================
+
+// ================== ACCOUNTS LIST (مصفوفة الحسابات صافية) ==================
 const ACCOUNTS = [
-{
-email: process.env.U_MAIL_1,
-password: process.env.U_PASS_1,
-allowedPlayers: ['King'],
-channelId:19287488,
-targetUserId:76023560
-},
-{
-email: process.env.U_MAIL_2,
-password: process.env.U_PASS_2,
-allowedPlayers: ['KSA'],
-channelId:19287488,
-targetUserId:76023560
-},
-{
-email: process.env.U_MAIL_3,
-password: process.env.U_PASS_3,
-allowedPlayers: ['MKH'],
-channelId:19287488,
-targetUserId:76023560
-},
-{
-email: process.env.U_MAIL_4,
-password: process.env.U_PASS_4,
-allowedPlayers: ['SAA'],
-channelId:19287488,
-targetUserId:76023560
-},
-{
-email: process.env.U_MAIL_5,
-password: process.env.U_PASS_5,
-allowedPlayers: ['JDH'],
-channelId:19287488,
-targetUserId:76023560
-},
-{
-email: process.env.U_MAIL_6,
-password: process.env.U_PASS_6,
-allowedPlayers: ['MLK'],
-channelId:19287488,
-targetUserId:76023560
-},
-{
-email: process.env.U_MAIL_7,
-password: process.env.U_PASS_7,
-allowedPlayers: ['CRN'],
-channelId: 569,
-targetUserId: 84520028
-},
-{
-email: process.env.U_MAIL_8,
-password: process.env.U_PASS_8,
-allowedPlayers: ['REX'],
-channelId: 569,
-targetUserId: 84520028
-},
-{
-email: process.env.U_MAIL_9,
-password: process.env.U_PASS_9,
-allowedPlayers: ['LRD'],
-channelId: 569,
-targetUserId: 84520028
-},
-{
-email: process.env.U_MAIL_10,
-password: process.env.U_PASS_10,
-allowedPlayers: ['ROY'],
-channelId: 569,
-targetUserId: 84520028
-},
-{
-email: process.env.U_MAIL_11,
-password: process.env.U_PASS_11,
-allowedPlayers: ['EMP'],
-channelId: 569,
-targetUserId: 84520028
-},
-{
-email: process.env.U_MAIL_12,
-password: process.env.U_PASS_12,
-allowedPlayers: ['NOR'],
-channelId: 569,
-targetUserId: 84520028
-},
-{
-email: process.env.U_MAIL_13,
-password: process.env.U_PASS_13,
-allowedPlayers: ['Passion'],
-channelId:19287488,
-targetUserId:76023560
-}
+    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'] },
+    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'] },
+    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'] },
+    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'] },
+    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'] },
+    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'] },
+    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'] },
+    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'] },
+    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'] },
+    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'] },
+    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'] },
+    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'] },
+    { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'] }
 ];
-// ================== CONSTANTS ==================
-
-
-// ================== HELPERS ==================
-function cleanText(text) {
-    if (!text) return "";
-    return (text.match(/[a-zA-Z0-9\u0621-\u064A]+/g) || []).join('');
-}
-
-function formatAnswer(text) {
-    return "#" + cleanText(text);
-}
 
 // ================== BOT FACTORY ==================
 function createBot(config) {
-
     const client = new WOLF();
-    
     const CHANNEL_ID = config.channelId;
-const TARGET_USER_ID = config.targetUserId;
+    const TARGET_USER_ID = config.targetUserId; // معرف الحساب الرئيسي الذي يرسل حالة الصناديق
     
-    let globalTimer = 0;
+    let globalTimer = 63; 
 
-    // ================= CAPTCHA =================
-    async function isCaptchaByColor(buffer) {
-        const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
-
-        let red = 0;
-        const total = info.width * info.height;
-
-        for (let i = 0; i < data.length; i += 4) {
-            if (data[i] > 120 && data[i] > data[i + 1] + 30 && data[i] > data[i + 2] + 30) {
-                red++;
-            }
-        }
-
-        return (red / total) * 100 > 40;
-    }
-
-    async function extractPlayerName(buffer) {
-        try {
-            const processed = await sharp(buffer).greyscale().threshold(160).toBuffer();
-            const worker = await createWorker('ara+eng');
-            const { data: { text } } = await worker.recognize(processed);
-            await worker.terminate();
-
-            const match = text.match(/اللاعب[:\s]+([^\n\r]+)/u);
-            return match ? match[1].trim() : "";
-        } catch {
-            return "";
-        }
-    }
-
-    async function solveCaptcha(buffer) {
-        const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
-
-        let minX = info.width, minY = info.height, maxX = 0, maxY = 0, found = false;
-
-        for (let y = 0; y < info.height; y++) {
-            for (let x = 0; x < info.width; x++) {
-                const i = (y * info.width + x) * 4;
-
-                if (data[i] > 200 && data[i + 1] > 200 && data[i + 2] < 100) {
-                    minX = Math.min(minX, x);
-                    minY = Math.min(minY, y);
-                    maxX = Math.max(maxX, x);
-                    maxY = Math.max(maxY, y);
-                    found = true;
-                }
-            }
-        }
-
-        if (!found) return null;
-
-        const processed = await sharp(buffer)
-            .extract({ left: minX + 10, top: minY + 10, width: (maxX - minX) - 20, height: (maxY - minY) - 20 })
-            .greyscale()
-            .sharpen()
-            .toBuffer();
-
-        const worker = await createWorker('eng+ara');
-        await worker.setParameters({ tessedit_pageseg_mode: '7' });
-
-        const { data: { text } } = await worker.recognize(processed);
-        await worker.terminate();
-
-        return cleanText(text);
-    }
-
-    // ================== BOX ==================
+    // ================== BOX PROCESSING ==================
     async function processBox(g, s, b, points, notReady) {
-
         const send = async (cmd) => {
             await client.messaging.sendGroupMessage(CHANNEL_ID, cmd);
-            await new Promise(r => setTimeout(r, 8000));
+            await new Promise(r => setTimeout(r, 2000)); 
         };
 
-        // غير جاهز => فتح كل الصناديق
         if (notReady) {
-
-            while (g > 0) {
-                await send('!مد صندوق فتح ذهبي');
-                g--;
-            }
-
-            while (s > 0) {
-                await send('!مد صندوق فتح فضي');
-                s--;
-            }
-
-            while (b > 0) {
-                await send('!مد صندوق فتح برونزي');
-                b--;
-            }
-
+            while (g > 0) { await send('!مد صندوق فتح ذهبي'); g--; }
+            while (s > 0) { await send('!مد صندوق فتح فضي'); s--; }
+            while (b > 0) { await send('!مد صندوق فتح برونزي'); b--; }
             return;
         }
 
-        // جاهز => حتى 42
         let need = Math.max(0, 42 - points);
-
         while (need > 0) {
             if (need >= 4 && g > 0) {
                 await send('!مد صندوق فتح ذهبي');
-                g--;
-                need -= 4;
-            }
-            else if (need >= 2 && s > 0) {
+                g--; need -= 4;
+            } else if (need >= 2 && s > 0) {
                 await send('!مد صندوق فتح فضي');
-                s--;
-                need -= 2;
-            }
-            else if (need >= 1 && b > 0) {
+                s--; need -= 2;
+            } else if (need >= 1 && b > 0) {
                 await send('!مد صندوق فتح برونزي');
-                b--;
-                need -= 1;
+                b--; need -= 1;
+            } else {
+                break;
             }
-            else break;
         }
     }
 
-    // ================== BOX CHECK ==================
+    // ================== BOX CHECK WITH FALLBACK ==================
     async function sendBoxCommand() {
-
         return new Promise((resolve) => {
-
+            console.log(`[${config.allowedPlayers[0]}] 🔍 فحص الصناديق من المرسل (${TARGET_USER_ID})...`);
             client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق');
 
             const handler = async (message) => {
-
+                // التأكد أن الرسالة قادمة من معرف مرسل الكابتشا الصحيح وفي الغرفة الصحيحة
                 if (
+                    message.sourceSubscriberId === TARGET_USER_ID &&
                     message.targetGroupId === CHANNEL_ID &&
+                    typeof message.body === 'string' &&
                     message.body.startsWith('/me 📦 حالة الصناديق')
                 ) {
-
                     const body = message.body;
-
                     const notReady = body.includes("غير جاهز");
 
                     const boxes = body.match(/برونزي:\s*(\d+)\s*\|\s*فضي:\s*(\d+)\s*\|\s*ذهبي:\s*(\d+)/);
@@ -287,188 +107,107 @@ const TARGET_USER_ID = config.targetUserId;
                     await processBox(g, s, b, p, notReady);
 
                     const timerLine = body.split('\n').find(l => l.includes('الجهاز الزمني'));
-
-                    let temp = 0;
+                    let tempSeconds = 0;
 
                     if (timerLine?.includes('موقوف')) {
-
                         await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد تشغيل');
-
+                        tempSeconds = 63;
                     } else if (timerLine && !timerLine.includes("غير نشط")) {
-
                         const h = timerLine.match(/(\d+)س/);
                         const m = timerLine.match(/(\d+)د/);
-                        const s = timerLine.match(/(\d+)ث/);
+                        const sMatch = timerLine.match(/(\d+)ث/);
 
-                        if (h) temp += +h[1] * 3600;
-                        if (m) temp += +m[1] * 60;
-                        if (s) temp += +s[1];
-
+                        if (h) tempSeconds += +h[1] * 3600;
+                        if (m) tempSeconds += +m[1] * 60;
+                        if (sMatch) tempSeconds += +sMatch[1];
                     } else if (!notReady) {
-
                         await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق ضمان وقت');
-                        temp = 3 * 3600;
+                        tempSeconds = 3 * 3600;
                     }
 
-                    globalTimer = temp;
-
+                    globalTimer = tempSeconds;
+                    console.log(`[${config.allowedPlayers[0]}] ✅ تحديث المؤقت: ${globalTimer} ثانية.`);
+                    
                     client.removeListener('groupMessage', handler);
+                    clearTimeout(fallbackTimeout);
                     resolve();
                 }
             };
 
             client.on('groupMessage', handler);
 
-            setTimeout(() => {
+            const fallbackTimeout = setTimeout(() => {
+                console.log(`[${config.allowedPlayers[0]}] ⚠️ لم يتم استلام رد من المرسل (${TARGET_USER_ID}). تفعيل مؤقت الأمان (63 ثانية)...`);
+                globalTimer = 63; 
                 client.removeListener('groupMessage', handler);
                 resolve();
             }, 12000);
         });
     }
 
-    // ================== LOOP ==================
+    // ================== CORE LOOP ==================
     async function loop() {
-
         while (true) {
             try {
+                await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد مهام');
+                await new Promise(r => setTimeout(r, 2000));
 
-               await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد مهام');
-               await new Promise(r => setTimeout(r, 2000));
+                await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد تحالف ايداع كل');
+                await new Promise(r => setTimeout(r, 2000));
 
-               await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد تحالف ايداع كل');
-               await new Promise(r => setTimeout(r, 2000));
-
-               await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق فتح');
+                await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق فتح');
+                await new Promise(r => setTimeout(r, 2000));
 
                 if (globalTimer > 0) {
                     globalTimer = Math.max(0, globalTimer - 63);
+                    console.log(`[${config.allowedPlayers[0]}] ⏳ انتظار 63 ثانية...`);
                     await new Promise(r => setTimeout(r, 63000));
                 } else {
+                    console.log(`[${config.allowedPlayers[0]}] ⏳ انتظار 5 دقائق و 3 ثوانٍ...`);
                     await new Promise(r => setTimeout(r, 303000));
                     await sendBoxCommand();
                 }
 
             } catch (e) {
-                console.error(`[${config.email}]`, e.message);
+                console.error(`[${config.allowedPlayers[0]}] خطأ في الدورة:`, e.message);
                 await new Promise(r => setTimeout(r, 5000));
             }
         }
     }
 
     // ================== EVENTS ==================
-    client.on('groupMessage', async (message) => {
-
-    if (
-        message.sourceSubscriberId !== TARGET_USER_ID ||
-        message.targetGroupId !== CHANNEL_ID
-    ) return;
-
-    try {
-
-        console.log("========== NEW MESSAGE ==========");
-        console.log(JSON.stringify(message, null, 2));
-
-        let imageUrl = null;
-
-        if (typeof message.body === "string" && message.body.startsWith("http")) {
-            imageUrl = message.body;
-        }
-
-        if (message.imageUrl) {
-            imageUrl = message.imageUrl;
-        }
-
-        if (message.url) {
-            imageUrl = message.url;
-        }
-
-        if (
-            message.attachment &&
-            typeof message.attachment.url === "string"
-        ) {
-            imageUrl = message.attachment.url;
-        }
-
-        if (!imageUrl) {
-            console.log("❌ No image URL found");
-            return;
-        }
-
-        console.log("✅ Image URL:", imageUrl);
-
-        const res = await fetch(imageUrl);
-
-        if (!res.ok) {
-            console.log("❌ Download failed:", res.status);
-            return;
-        }
-
-        const buffer = Buffer.from(await res.arrayBuffer());
-
-        if (!(await isCaptchaByColor(buffer))) {
-            console.log("❌ Not captcha image");
-            return;
-        }
-
-        const player = await extractPlayerName(buffer);
-
-        console.log("PLAYER =", player);
-
-        if (
-            !config.allowedPlayers.some(
-                p => player.toUpperCase().includes(p.toUpperCase())
-            )
-        ) {
-            console.log("❌ Player not assigned to this account");
-            return;
-        }
-
-        const code = await solveCaptcha(buffer);
-
-        console.log("CODE =", code);
-
-        if (!code) {
-            console.log("❌ OCR failed");
-            return;
-        }
-
-        const answer = formatAnswer(code);
-
-        console.log("✅ SEND =", answer);
-
-        await client.messaging.sendGroupMessage(
-            CHANNEL_ID,
-            answer
-        );
-
-    } catch (e) {
-        console.error(
-            `[${config.email}] captcha error`,
-            e.message
-        );
-    }
-});
-
     client.on('ready', async () => {
-
-        console.log(`✅ Logged in: ${config.email}`);
-
-        await sendBoxCommand();
-
-        setInterval(sendBoxCommand, 25 * 60 * 1000);
-
-        loop();
+        console.log(`✅ الحساب [${config.allowedPlayers[0]}] شبك بنجاح في الغرفة [${CHANNEL_ID}] مع المرسل [${TARGET_USER_ID}]`);
+        
+        try {
+            await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق ضمان وقت');
+            await new Promise(r => setTimeout(r, 3000));
+            await sendBoxCommand();
+            loop();
+        } catch (err) {
+            console.error(`[${config.allowedPlayers[0]}] خطأ تهيئة:`, err.message);
+        }
     });
 
     client.login(config.email, config.password);
 }
 
-// ================== START MULTI ACCOUNTS ==================
+// ================== START MULTI ACCOUNTS WITH AUTO-ROUTING ==================
 ACCOUNTS.forEach((acc, i) => {
+    // تحديد اسم اللاعب الأساسي للحساب
+    const playerName = acc.allowedPlayers[0];
+
+    // 🌟 الفلترة الذكية: إذا كان اسم اللاعب في القائمة الخاصة، يعطيه الغرفة الثانية، وإلا يعطيه الغرفة الرئيسية
+    const roomSettings = SPECIAL_ROOM_USERS.includes(playerName) ? SECOND_ROOM : MAIN_ROOM;
+
+    // دمج الإعدادات تلقائياً مع بيانات الحساب
+    const finalConfig = {
+        ...acc,
+        channelId: roomSettings.channelId,
+        targetUserId: roomSettings.targetUserId
+    };
 
     setTimeout(() => {
-        console.log(`🚀 Starting account ${i + 1}`);
-        createBot(acc);
-    }, i * 35000);
-
+        createBot(finalConfig);
+    }, i * 35000); 
 });
