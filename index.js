@@ -1,4 +1,7 @@
+import 'dotenv/config';
+import wolfjs from 'wolf.js';
 
+const { WOLF } = wolfjs;
 
 // ================== 🎛️ CONTROL PANEL (المتحكم الرئيسي) ==================
 
@@ -10,13 +13,13 @@ const MAIN_ROOM = {
 
 // 2. إعدادات الغرفة الفرعية/الثانية
 const SECOND_ROOM = {
-    channelId: 13219769,          // الغرفة الثانية
-    targetUserId: 76023171   // مرسل الكابتشا الثاني
+     channelId:17614046,
+     targetUserId:76023150  // مرسل الكابتشا الثاني
 };
 
 // 3. 🎯 ضع هنا فقط أسماء الحسابات التي تريد نقلها للغرفة الثانية!
 // أي اسم ليس موجوداً هنا، سيعمل تلقائياً في الغرفة الرئيسية (MAIN_ROOM)
-const SPECIAL_ROOM_USERS = [];
+const SPECIAL_ROOM_USERS = ['King', 'KSA', 'MKH', 'SAA', 'JDH', 'MLK', 'Passion'];
 // =========================================================================
 
 // ================== ACCOUNTS LIST (مصفوفة الحسابات صافية) ==================
