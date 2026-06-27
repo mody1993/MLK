@@ -5,25 +5,19 @@ const { WOLF } = wolfjs;
 
 // ================== 🎛️ CONTROL PANEL (المتحكم الرئيسي) ==================
 
-// 1. الإعدادات الرئيسية الافتراضية (لكل الحسابات)
 const MAIN_ROOM = {
-    channelId: 569,     // الغرفة الرئيسية
-    targetUserId: 84520028   // مرسل الكابتشا الرئيسي (حساب اللعبة)
+    channelId: 569,
+    targetUserId: 84520028
 };
 
-// 2. إعدادات الغرفة الفرعية/الثانية
 const SECOND_ROOM = {
-     channelId:13219769,
-     targetUserId:76023171  // مرسل الكابتشا الثاني
+     channelId: 13219769,
+     targetUserId: 76023171
 };
 
-// 3. 🎯 ضع هنا فقط أسماء الحسابات التي تريد نقلها للغرفة الثانية!
-// أي اسم ليس موجوداً هنا، سيعمل تلقائياً في الغرفة الرئيسية (MAIN_ROOM)
 const SPECIAL_ROOM_USERS = [];
 
-// =========================================================================
-
-// ================== ACCOUNTS LIST (مصفوفة الحسابات صافية) ==================
+// ================== ACCOUNTS LIST ==================
 const ACCOUNTS = [
     { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'] },
     { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'] },
@@ -44,11 +38,10 @@ const ACCOUNTS = [
 function createBot(config) {
     const client = new WOLF();
     const CHANNEL_ID = config.channelId;
-    const TARGET_USER_ID = config.targetUserId; // معرف الحساب الرئيسي الذي يرسل حالة الصناديق
+    const TARGET_USER_ID = config.targetUserId;
     
     let globalTimer = 63; 
 
-    // ================== BOX PROCESSING ==================
     async function processBox(g, s, b, points, notReady) {
         const send = async (cmd) => {
             await client.messaging.sendGroupMessage(CHANNEL_ID, cmd);
@@ -79,14 +72,12 @@ function createBot(config) {
         }
     }
 
-    // ================== BOX CHECK WITH FALLBACK ==================
     async function sendBoxCommand() {
         return new Promise((resolve) => {
             console.log(`[${config.allowedPlayers[0]}] 🔍 فحص الصناديق من المرسل (${TARGET_USER_ID})...`);
             client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق');
 
             const handler = async (message) => {
-                // التأكد أن الرسالة قادمة من معرف مرسل الكابتشا الصحيح وفي الغرفة الصحيحة
                 if (
                     message.sourceSubscriberId === TARGET_USER_ID &&
                     message.targetGroupId === CHANNEL_ID &&
@@ -145,14 +136,18 @@ function createBot(config) {
         });
     }
 
-    // ================== CORE LOOP ==================
     async function loop() {
         while (true) {
             try {
                 await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد مهام');
                 await new Promise(r => setTimeout(r, 2000));
 
-                await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد تحالف ايداع كل');
+                // تعديل: الحساب السادس يرسل أمر الهدية بدلاً من أمر إيداع التحالف
+                if (config.email === process.env.U_MAIL_6) {
+                    await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد هدية 38770375 كل');
+                } else {
+                    await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد تحالف ايداع كل');
+                }
                 await new Promise(r => setTimeout(r, 2000));
 
                 await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق فتح');
@@ -175,7 +170,6 @@ function createBot(config) {
         }
     }
 
-    // ================== EVENTS ==================
     client.on('ready', async () => {
         console.log(`✅ الحساب [${config.allowedPlayers[0]}] شبك بنجاح في الغرفة [${CHANNEL_ID}] مع المرسل [${TARGET_USER_ID}]`);
         
@@ -192,15 +186,10 @@ function createBot(config) {
     client.login(config.email, config.password);
 }
 
-// ================== START MULTI ACCOUNTS WITH AUTO-ROUTING ==================
 ACCOUNTS.forEach((acc, i) => {
-    // تحديد اسم اللاعب الأساسي للحساب
     const playerName = acc.allowedPlayers[0];
-
-    // 🌟 الفلترة الذكية: إذا كان اسم اللاعب في القائمة الخاصة، يعطيه الغرفة الثانية، وإلا يعطيه الغرفة الرئيسية
     const roomSettings = SPECIAL_ROOM_USERS.includes(playerName) ? SECOND_ROOM : MAIN_ROOM;
 
-    // دمج الإعدادات تلقائياً مع بيانات الحساب
     const finalConfig = {
         ...acc,
         channelId: roomSettings.channelId,
