@@ -17,11 +17,10 @@ const SECOND_ROOM = {
      targetUserId: 76023171  // مرسل الكابتشا الثاني للعب
 };
 
-// 3. 🎯 قنوات وغرفة فحص الصناديق الجديدة (تعديلك الجديد)
-// ضع هنا رقم غرفة الفحص الخاصة بك ومعرف الـ ID الخاص بمرسل اللعبة هناك
+// 3. 🎯 قنوات وغرفة فحص الصناديق الجديدة
 const CHECK_ROOM = {
-    channelId: 18654218,     // 👈 ضع هنا رقم قناة الفحص الخاصة بك
-    targetUserId: 76023242   // 👈 ضع هنا معرف حساب اللعبة (المرسل) في قناة الفحص
+    channelId: 18654218,     // رقم قناة الفحص الخاصة بك
+    targetUserId: 76023242   // معرف حساب اللعبة (المرسل) في قناة الفحص
 };
 
 // 4. أسماء الحسابات التي تريد نقلها للغرفة الثانية في اللعب
@@ -37,7 +36,7 @@ const ACCOUNTS = [
     { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'] },
     { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'] },
     { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'] },
-    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'] },
+    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'] }, // حساب 6 يودع بشكل طبيعي الآن
     { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'] },
     { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'] },
     { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'] },
@@ -53,10 +52,11 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // ================== BOT FACTORY ==================
 function createBot(config) {
     const client = new WOLF();
-    const PLAY_CHANNEL_ID = config.channelId; // غرفة اللعب (أساسية أو فرعية)
-    const botName = config.allowedPlayers[0];  // اسم البوت للـ Logs
+    const PLAY_CHANNEL_ID = config.channelId; 
+    const botName = config.allowedPlayers[0];  
     
-    let globalTimer = 0; 
+    let globalTimer = 0;  
+    let isTimeDeviceActive = false; 
 
     // ================== BOX PROCESSING (قناة الفحص) ==================
     async function processBox(g, s, b, points, notReady) {
@@ -92,7 +92,7 @@ function createBot(config) {
     // ================== BOX CHECK WITH FALLBACK (قناة الفحص) ==================
     async function sendBoxCommand() {
         return new Promise((resolve) => {
-            console.log(`[${botName}] 🔍 فحص الصناديق في غرفة الفحص من المرسل (${CHECK_ROOM.targetUserId})...`);
+            console.log(`[${botName}] 🔍 بدء الفحص الفوري والمستمر لـ (!مد صندوق)...`);
             client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق');
 
             const handler = async (message) => {
@@ -121,6 +121,7 @@ function createBot(config) {
                     if (timerLine?.includes('موقوف')) {
                         await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
                         tempSeconds = 63;
+                        isTimeDeviceActive = true; 
                     } else if (timerLine && !timerLine.includes("غير نشط")) {
                         const h = timerLine.match(/(\d+)س/);
                         const m = timerLine.match(/(\d+)د/);
@@ -129,13 +130,19 @@ function createBot(config) {
                         if (h) tempSeconds += parseInt(h[1], 10) * 3600;
                         if (m) tempSeconds += parseInt(m[1], 10) * 60;
                         if (sMatch) tempSeconds += parseInt(sMatch[1], 10);
+                        
+                        isTimeDeviceActive = true; 
                     } else if (!notReady) {
                         await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
                         tempSeconds = 3 * 3600;
+                        isTimeDeviceActive = true; 
+                    } else {
+                        tempSeconds = 0;
+                        isTimeDeviceActive = false; 
                     }
 
                     globalTimer = tempSeconds;
-                    console.log(`[${botName}] ✅ تحديث مؤقت الجهاز الزمني: ${globalTimer} ثانية.`);
+                    console.log(`[${botName}] ⏱️ تحديث حالة الجهاز الزمني -> نشط: ${isTimeDeviceActive} | الوقت المتبقي: ${globalTimer} ثانية.`);
                     
                     client.removeListener('groupMessage', handler);
                     clearTimeout(fallbackTimeout);
@@ -146,8 +153,9 @@ function createBot(config) {
             client.on('groupMessage', handler);
 
             const fallbackTimeout = setTimeout(() => {
-                console.log(`[${botName}] ⚠️ لم يتم استلام رد الفحص من المرسل (${CHECK_ROOM.targetUserId}). إعادة المحاولة بعد 63 ثانية...`);
+                console.log(`[${botName}] ⚠️ لم يتم استلام رد الفحص. إعادة المحاولة التلقائية بعد 63 ثانية...`);
                 globalTimer = 63; 
+                isTimeDeviceActive = true; 
                 client.removeListener('groupMessage', handler);
                 resolve();
             }, 12000);
@@ -161,10 +169,15 @@ function createBot(config) {
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                 await sleep(2000);
 
+                // جميع الحسابات (بما فيها حساب 6) تودع الآن بشكل موحد
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تحالف ايداع كل');
                 
-                // إجمالي الانتظار للدورة هو 63 ثانية (2 ثانية للأمر الأول + 61 ثانية هنا)
-                await sleep(61000);
+                if (isTimeDeviceActive) {
+                    await sleep(61000); // الوضع السريع (كل 63 ثانية إجمالاً)
+                } else {
+                    console.log(`[${botName}] ⚠️ الجهاز الزمني غير نشط! تشغيل وضع الأمان لدورة اللعب (كل 5 دقائق و 1 ثانية)...`);
+                    await sleep(301000); 
+                }
             } catch (e) {
                 console.error(`[${botName}] ❌ خطأ في دورة اللعب:`, e.message);
                 await sleep(5000);
@@ -178,8 +191,6 @@ function createBot(config) {
             try {
                 console.log(`[${botName}] 📦 إرسال أمر الفتح الدوري (!مد صندوق فتح) في قناة الفحص...`);
                 await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
-                
-                // الانتظار لمدة 5 دقائق بالتمام والكمال
                 await sleep(300000); 
             } catch (e) {
                 console.error(`[${botName}] ❌ خطأ في دورة الفتح الدوري:`, e.message);
@@ -188,22 +199,23 @@ function createBot(config) {
         }
     }
 
-    // ================== ⏱️ LOOP 3: INTELLIGENT CHECK (دورة الفحص الذكي المرتبط بالوقت) ==================
+    // ================== ⏱️ LOOP 3: INTELLIGENT CHECK (دورة الفحص الدوري كل 60 دقيقة) ==================
     async function checkLoop() {
         while (true) {
             try {
-                // تنفيذ أمر الفحص الأساسي وقراءة الوقت
+                // الفحص يبدأ فوراً عند تشغيل الدورة (أول ما يشتغل البوت)
                 await sendBoxCommand();
                 
                 if (globalTimer > 0) {
-                    console.log(`[${botName}] ⏱️ ارتباط ذكي: البوت ينام الآن لـ ${globalTimer} ثانية تزامناً مع الجهاز الزمني...`);
-                    await sleep(globalTimer * 1000); // النوم المطابق لوقت الجهاز بالثانية
+                    console.log(`[${botName}] ⏱️ ارتباط ذكي: البوت ينام لـ ${globalTimer} ثانية تزامناً مع انتهاء وقت الجهاز الزمني...`);
+                    await sleep(globalTimer * 1000); 
                 } else {
-                    console.log(`[${botName}] ⏳ الجهاز الزمني غير نشط. فحص أمان بعد 5 دقائق و 3 ثوانٍ...`);
-                    await sleep(303000);
+                    // 👈 التعديل الجديد: إذا كان غير نشط، ينام البوت لمدة 60 دقيقة بالتمام والكمال قبل إعادة الفحص
+                    console.log(`[${botName}] ⏳ الجهاز الزمني غير نشط. الانتظار لـ (60 دقيقة) للفحص الدوري القادم...`);
+                    await sleep(3600000); // 60 دقيقة (60 * 60 * 1000 مللي ثانية)
                 }
             } catch (e) {
-                console.error(`[${botName}] ❌ خطأ في دورة الفحص الذكي:`, e.message);
+                console.error(`[${botName}] ❌ خطأ في دورة الفحص:`, e.message);
                 await sleep(5000);
             }
         }
@@ -218,12 +230,12 @@ function createBot(config) {
             await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
             await sleep(3000);
             
-            // 2. تشغيل الـ 3 دورات المتوازية والمستقلة فوراً
+            // 2. تشغيل الـ 3 دورات المتوازية فوراً (الفحص سيبدأ فوراً هنا)
             playLoop();
             openBoxLoop();
             checkLoop();
 
-            // 3. 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة (21,480,000 مللي ثانية)
+            // 3. 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة
             setTimeout(async () => {
                 console.log(`[${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! إرسال أمر (!مد ايقاف) في قناة الفحص...`);
                 try {
@@ -244,8 +256,6 @@ function createBot(config) {
 // ================== START MULTI ACCOUNTS WITH AUTO-ROUTING ==================
 ACCOUNTS.forEach((acc, i) => {
     const playerName = acc.allowedPlayers[0];
-
-    // توجيه غرف اللعب بناءً على اسم اللاعب (رئيسية أو فرعية)
     const roomSettings = specialUsersSet.has(playerName) ? SECOND_ROOM : MAIN_ROOM;
 
     const finalConfig = {
@@ -254,8 +264,7 @@ ACCOUNTS.forEach((acc, i) => {
         targetUserId: roomSettings.targetUserId
     };
 
-    // 🌟 التعديل الجديد: تقليص الفاصل الزمني بين دخول الحسابات إلى 15 ثانية بالتمام
     setTimeout(() => {
         createBot(finalConfig);
-    }, i * 10000); 
+    }, i * 15000); // 15 ثانية فاصل دخول بين الحسابات لضمان الاستقرار الكلي
 });
