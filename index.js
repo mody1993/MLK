@@ -25,7 +25,7 @@ const CHECK_ROOM = {
 };
 
 // 4. أسماء الحسابات التي تريد نقلها للغرفة الثانية في اللعب
-const SPECIAL_ROOM_USERS = ['King', 'KSA', 'MKH', 'SAA', 'JDH', 'MLK', 'CRN', 'LRD', 'EMP', 'Passion'];
+const SPECIAL_ROOM_USERS = [];
 const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
 
 // =========================================================================
