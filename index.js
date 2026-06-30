@@ -7,7 +7,7 @@ const { WOLF } = wolfjs;
 
 // 1. الإعدادات الرئيسية الافتراضية للعب (الغرفة الرئيسية)
 const MAIN_ROOM = {
-   channelId: 569,
+  channelId: 569,
  targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
 };
 
@@ -211,7 +211,7 @@ function createBot(config) {
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                 
                 if (isTimeDeviceActive) {
-                    await sleep(61000); // الوضع السريع التزامني المعتاد (كل 63 ثانية إجمالاً)
+                    await sleep(61000); // الوضع السريع التزامني Mعتاد (كل 63 ثانية إجمالاً)
                 } else {
                     // 🎯 تطبيق التوقيت المطلق للحالة الثانية: كل 5 دقائق و3 ثوانٍ بالتمام (2000 + 301000 = 303000ms)
                     console.log(`[${botName}] ⚠️ الجهاز الزمني غير نشط! وضع الأمان لدورة اللعب (كل 5 دقائق و 3 ثوانٍ)...`);
@@ -258,13 +258,19 @@ function createBot(config) {
         }
     }
 
-    // ================== 🥷 LOOP 4: STEAL LOOP (دورة السرقة التلقائية كل 3 دقائق و 3 ثواني) ==================
+    // ================== 🥷 LOOP 4: STEAL LOOP (دورة السرقة التلقائية بعد المهام كل 3 دقائق و 3 ثواني) ==================
     async function stealLoop() {
         while (true) {
             try {
+                console.log(`[${botName}] 📋 إرسال أمر المهام قبل السرقة...`);
+                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                await sleep(2000); // انتظار ثانيتين لضمان الترتيب
+
                 console.log(`[${botName}] 🥷 إرسال أمر السرقة التلقائي (!مد اسرق) في غرفة اللعب...`);
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
-                await sleep(183000); // 3 دقائق و 3 ثوانٍ بالتمام والكمال (183 ثانية)
+                
+                // 183000ms ناقص 2000ms يساوي 181000ms للحفاظ على المجموع الكلي (3 دقائق و3 ثوانٍ) بدقة
+                await sleep(181000); 
             } catch (e) {
                 console.error(`[${botName}] ❌ خطأ في دورة السرقة:`, e.message);
                 await sleep(5000);
@@ -300,7 +306,7 @@ function createBot(config) {
             playLoop();
             openBoxLoop();
             checkLoop();
-            stealLoop(); // انطلاق دورة السرقة التلقائية هنا
+            stealLoop(); // انطلاق دورة السرقة المنظمة هنا
 
             // 5. 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة
             setTimeout(async () => {
