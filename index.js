@@ -7,8 +7,8 @@ const { WOLF } = wolfjs;
 
 // 1. الإعدادات الرئيسية الافتراضية للعب (الغرفة الرئيسية)
 const MAIN_ROOM = {
-    channelId:13219769,
- targetUserId:76023171  // مرسل الكابتشا الرئيسي للعب
+    channelId: 569,
+    targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
 };
 
 // 2. إعدادات الغرفة الفرعية/الثانية للعب
@@ -224,7 +224,7 @@ function createBot(config) {
         }
     }
 
-    // ================== 📦 LOOP 2: FIVE MINUTE OPEN (دورة الفتح الدوري كل 5 دقائق) ==================
+    // ================== 📦 LOOP 2: FIVE MINUTE OPEN (دورة الففتح الدوري كل 5 دقائق) ==================
     async function openBoxLoop() {
         while (true) {
             try {
@@ -258,65 +258,20 @@ function createBot(config) {
         }
     }
 
+    // ================== 🥷 LOOP 4: STEAL LOOP (دورة السرقة التلقائية كل 3 دقائق و 3 ثواني) ==================
+    async function stealLoop() {
+        while (true) {
+            try {
+                console.log(`[${botName}] 🥷 إرسال أمر السرقة التلقائي (!مد اسرق) في غرفة اللعب...`);
+                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
+                await sleep(183000); // 3 دقائق و 3 ثوانٍ بالتمام والكمال (183 ثانية)
+            } catch (e) {
+                console.error(`[${botName}] ❌ خطأ في دورة السرقة:`, e.message);
+                await sleep(5000);
+            }
+        }
+    }
+
     // ================== EVENTS (تسلسل أوامر التشغيل بالتتابع الصارم) ==================
     client.on('ready', async () => {
-        console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM.channelId}]`);
-        
-        try {
-            console.log(`[${botName}] 🚀 بدء تنفيذ تسلسل أوامر التشغيل بالتتابع...`);
-            
-            // 1. قناة الفحص أولاً
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-            await sleep(3000);
-            
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-            await sleep(3000);
-            
-            // 2. قناة اللعب (الرئيسية أو الفرعية للحساب المخصص لها)
-            await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
-            await sleep(3000);
-            
-            await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-            await sleep(3000);
-            
-            // 3. إطلاق أمر الفحص الميكانيكي الأول لتحديد وتوزيع الحسابات على الحالات الثلاث
-            await sendBoxCommand();
-            
-            // 4. انطلاق الدورات الثلاث التزامنية بكفاءة واستقرار تام
-            playLoop();
-            openBoxLoop();
-            checkLoop();
-
-            // 5. 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة
-            setTimeout(async () => {
-                console.log(`[${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! إرسال أمر (!مد ايقاف) في قناة الفحص...`);
-                try {
-                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
-                } catch (stopErr) {
-                    console.error(`[${botName}] خطأ أثناء إرسال أمر الإيقاف:`, stopErr.message);
-                }
-            }, 21480000);
-
-        } catch (err) {
-            console.error(`[${botName}] ❌ خطأ تهيئة البوت:`, err.message);
-        }
-    });
-
-    client.login(config.email, config.password);
-}
-
-// ================== START MULTI ACCOUNTS WITH AUTO-ROUTING ==================
-ACCOUNTS.forEach((acc, i) => {
-    const playerName = acc.allowedPlayers[0];
-    const roomSettings = specialUsersSet.has(playerName) ? SECOND_ROOM : MAIN_ROOM;
-
-    const finalConfig = {
-        ...acc,
-        channelId: roomSettings.channelId,
-        targetUserId: roomSettings.targetUserId
-    };
-
-    setTimeout(() => {
-        createBot(finalConfig);
-    }, i * 15000); // فاصل زمني 15 ثانية لضمان انسيابية دخول الأوامر وتفادي ضغط السيرفر
-});
+        console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في
