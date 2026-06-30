@@ -7,8 +7,8 @@ const { WOLF } = wolfjs;
 
 // 1. الإعدادات الرئيسية الافتراضية للعب (الغرفة الرئيسية)
 const MAIN_ROOM = {
-    channelId: 569,         // الغرفة الرئيسية للعب
-    targetUserId: 84520028   // مرسل الكابتشا الرئيسي للعب
+   channelId:74000,
+   targetUserId:84520029  // مرسل الكابتشا الرئيسي للعب
 };
 
 // 2. إعدادات الغرفة الفرعية/الثانية للعب
@@ -29,21 +29,21 @@ const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
 
 // =========================================================================
 
-// ================== ACCOUNTS LIST (مصفوفة الحسابات) ==================
+// ================== ACCOUNTS LIST (مصفوفة الحسابات والأوامر الخاصة بها) ==================
 const ACCOUNTS = [
-    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'] },
-    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'] },
-    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'] },
-    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'] },
-    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'] },
-    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'] }, 
-    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'] },
-    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'] },
-    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'] },
-    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'] },
-    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'] },
-    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'] },
-    { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'] }
+    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'],     cmd: '!مد هدية 38770375 كل' }, 
+    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'], cmd: '!مد تحالف ايداع كل' }
 ];
 
 // دالة الانتظار الموحدة
@@ -54,9 +54,7 @@ function createBot(config) {
     const client = new WOLF();
     const PLAY_CHANNEL_ID = config.channelId; 
     const botName = config.allowedPlayers[0];  
-    
-    // تخصيص الأمر الخاص بالحساب رقم 6 (MLK) تلقائياً بناءً على طلبك السابق
-    const depositCommand = botName === 'MLK' ? '!مد هدية 38770375 كل' : '!مد تحالف ايداع كل';
+    const playCommand = config.cmd; 
     
     let globalTimer = 0;  
     let isTimeDeviceActive = false; 
@@ -92,10 +90,10 @@ function createBot(config) {
         }
     }
 
-    // ================== BOX CHECK WITH RETRY ON HANG (فحص التزامن مع نظام إعادة المحاولة) ==================
+    // ================== BOX CHECK WITH RETRY & ADVANCED STATE LOGIC ==================
     async function sendBoxCommand(attempt = 1) {
         return new Promise((resolve) => {
-            console.log(`[${botName}] 🔍 [محاولة ${attempt}] جاري إرسال أمر (!مد صندوق) وفحص التزامن...`);
+            console.log(`[${botName}] 🔍 [محاولة ${attempt}] جاري إرسال أمر (!مد صندوق) وفحص الحالات...`);
             client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق');
 
             let isResolved = false;
@@ -111,14 +109,17 @@ function createBot(config) {
                     client.removeListener('groupMessage', handler);
                     clearTimeout(fallbackTimeout);
 
-                    const body = message.body;
-                    const lines = body.split('\n');
+                    // 🌟 تنظيف النص بالكامل من علامات الاتجاه والحروف المخفية لضمان المطابقة الصارمة
+                    const cleanBody = message.body.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+                    const lines = cleanBody.split('\n');
                     
-                    const isGuaranteeReady = lines.some(l => l.includes('حالة الضمان') && l.includes('جاهز'));
+                    // عزل سطر الضمان الفعلي (الذي لا يحتوي على نقاط) والتحقق من جاهزيته
+                    const guaranteeLine = lines.find(l => l.includes('الضمان') && !l.includes('نقاط'));
+                    const isGuaranteeReady = guaranteeLine ? guaranteeLine.includes('جاهز') : false;
                     const notReady = !isGuaranteeReady; 
 
-                    const boxes = body.match(/برونزي:\s*(\d+)\s*\|\s*فضي:\s*(\d+)\s*\|\s*ذهبي:\s*(\d+)/);
-                    const pointsMatch = body.match(/نقاط الضمان:\s*(\d+)\/50/);
+                    const boxes = cleanBody.match(/برونزي:\s*(\d+)\s*\|\s*فضي:\s*(\d+)\s*\|\s*ذهبي:\s*(\d+)/);
+                    const pointsMatch = cleanBody.match(/نقاط الضمان:\s*(\d+)\/50/);
 
                     const g = boxes ? parseInt(boxes[3], 10) : 0;
                     const s = boxes ? parseInt(boxes[2], 10) : 0;
@@ -131,22 +132,24 @@ function createBot(config) {
                     let tempSeconds = 0;
 
                     if (timerLine) {
-                        if (timerLine.includes('موقوف')) {
-                            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                            tempSeconds = 63;
-                            isTimeDeviceActive = true; 
-                        } else if (timerLine.includes('غير نشط')) {
+                        if (timerLine.includes('غير نشط')) {
                             if (isGuaranteeReady) {
-                                console.log(`[${botName}] 🎯 الجهاز الزمني غير نشط ولكن الضمان جاهز قطعيّاً! إرسال أمر تفعيل ضمان الوقت فوراً...`);
+                                // 🟢 [الحالة الأولى]: غير نشط وحالة الضمان جاهز -> تفعيل فوري لـ 3 ساعات ونوم ممتد
+                                console.log(`[${botName}] 🎯 [الحالة 1] الجهاز غير نشط والضمان جاهز! تفعيل ضمان الوقت لـ 3 ساعات...`);
                                 await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-                                tempSeconds = 63; 
+                                tempSeconds = (3 * 3600) + 60; // 3 ساعات ودقيقة واحدة (10860 ثانية) بدون فحص صندوق
                                 isTimeDeviceActive = true;
                             } else {
-                                console.log(`[${botName}] ⏳ الجهاز الزمني غير نشط والضمان غير جاهز فعلياً. خمول مبرمج لمدة ساعة.`);
-                                tempSeconds = 0;
-                                isTimeDeviceActive = false; 
+                                // 🟡 [الحالة الثانية]: غير نشط والضمان غير جاهز -> لعب آمن وإعادة فحص كل 10 دقائق
+                                console.log(`[${botName}] ⏳ [الحالة 2] الجهاز غير نشط والضمان غير جاهز. لعب آمن وفحص بعد 10 دقائق...`);
+                                tempSeconds = 600; // 10 دقائق (600 ثانية) لإعادة الفحص الدوري
+                                isTimeDeviceActive = false;
                             }
-                        } else {
+                        } else if (timerLine.includes('موقوف')) {
+                            // 🔵 [الحالة الثالثة]: الجهاز موقوف -> تشغيل فوري وقراءة الوقت المتبقي إن وجد
+                            console.log(`[${botName}] 🎛️ [الحالة 3] الجهاز الزمني موقوف! إرسال أمر (!مد تشغيل)...`);
+                            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+                            
                             const h = timerLine.match(/(\d+)س/);
                             const m = timerLine.match(/(\d+)د/);
                             const sMatch = timerLine.match(/(\d+)ث/);
@@ -155,12 +158,25 @@ function createBot(config) {
                             if (m) tempSeconds += parseInt(m[1], 10) * 60;
                             if (sMatch) tempSeconds += parseInt(sMatch[1], 10);
                             
-                            isTimeDeviceActive = true; 
+                            tempSeconds = tempSeconds > 0 ? tempSeconds + 60 : 63; // إضافة دقيقة أمان أو فحص سريع
+                            isTimeDeviceActive = true;
+                        } else {
+                            // 🟣 [حالة إضافية]: الجهاز يعمل ونشط بالفعل -> قراءة التوقيت التنازلي الطبيعي المتبقي
+                            const h = timerLine.match(/(\d+)س/);
+                            const m = timerLine.match(/(\d+)د/);
+                            const sMatch = timerLine.match(/(\d+)ث/);
+
+                            if (h) tempSeconds += parseInt(h[1], 10) * 3600;
+                            if (m) tempSeconds += parseInt(m[1], 10) * 60;
+                            if (sMatch) tempSeconds += parseInt(sMatch[1], 10);
+                            
+                            tempSeconds += 60; // إضافة دقيقة أمان فوق التوقيت
+                            isTimeDeviceActive = true;
                         }
                     }
 
                     globalTimer = tempSeconds;
-                    console.log(`[${botName}] ⏱️ تم قراءة البيانات بنجاح -> نشط: ${isTimeDeviceActive} | الوقت المتبقي للجهاز الزمني: ${globalTimer} ثانية.`);
+                    console.log(`[${botName}] ⏱️ معالجة الحالة تمت بنجاح -> نشط للعب: ${isTimeDeviceActive} | المؤقت القادم للفحص: ${globalTimer} ثانية.`);
                     resolve();
                 }
             };
@@ -171,9 +187,8 @@ function createBot(config) {
                 if (isResolved) return;
                 client.removeListener('groupMessage', handler);
 
-                // 🌟 إذا علّق البوت ولم يرسل الحالة، يعيد المحاولة حتى 3 مرات قبل الاستسلام
                 if (attempt < 3) {
-                    console.log(`[${botName}] ⚠️ تعليق في السيرفر! لم يتم استلام رد الفحص (المحاولة ${attempt}). إعادة المحاولة مجدداً بعد 4 ثوانٍ...`);
+                    console.log(`[${botName}] ⚠️ تعليق في سيرفر اللعبة! لم يتم استلام رد الفحص (المحاولة ${attempt}). إعادة المحاولة بعد 4 ثوانٍ...`);
                     await sleep(4000);
                     resolve(await sendBoxCommand(attempt + 1)); 
                 } else {
@@ -193,12 +208,13 @@ function createBot(config) {
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                 await sleep(2000);
 
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, depositCommand);
+                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                 
                 if (isTimeDeviceActive) {
-                    await sleep(61000); 
+                    await sleep(61000); // الوضع السريع التزامني المعتاد (كل 63 ثانية إجمالاً)
                 } else {
-                    console.log(`[${botName}] ⚠️ الجهاز الزمني غير نشط! تشغيل وضع الأمان لدورة اللعب (كل 5 دقائق و 1 ثانية)...`);
+                    // 🎯 تطبيق التوقيت المطلق للحالة الثانية: كل 5 دقائق و3 ثوانٍ بالتمام (2000 + 301000 = 303000ms)
+                    console.log(`[${botName}] ⚠️ الجهاز الزمني غير نشط! وضع الأمان لدورة اللعب (كل 5 دقائق و 3 ثوانٍ)...`);
                     await sleep(301000); 
                 }
             } catch (e) {
@@ -227,11 +243,10 @@ function createBot(config) {
         while (true) {
             try {
                 if (globalTimer > 0) {
-                    console.log(`[${botName}] ⏱️ ارتباط ذكي: البوت ينام لـ ${globalTimer} ثانية تزامناً مع انتهاء وقت الجهاز الزمني...`);
+                    console.log(`[${botName}] ⏱️ ارتباط ذكي: البوت ينام لـ ${globalTimer} ثانية تزامناً مع انتهاء حالة الفحص السابقة...`);
                     await sleep(globalTimer * 1000); 
                 } else {
-                    console.log(`[${botName}] ⏳ الجهاز الزمني غير نشط تماماً. الانتظار لـ (60 دقيقة) للفحص الدوري القادم...`);
-                    await sleep(3600000); 
+                    await sleep(600000); // احتياطي أمان 10 دقائق إذا صفر المؤقت لأي سبب
                 }
                 
                 await sendBoxCommand();
@@ -243,31 +258,31 @@ function createBot(config) {
         }
     }
 
-    // ================== EVENTS (نظام التتابع والتشغيل المطور) ==================
+    // ================== EVENTS (تسلسل أوامر التشغيل بالتتابع الصارم) ==================
     client.on('ready', async () => {
         console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM.channelId}]`);
         
         try {
             console.log(`[${botName}] 🚀 بدء تنفيذ تسلسل أوامر التشغيل بالتتابع...`);
             
-            // 1. قناة الفحص: تشغيل الأجهزة الأساسية وضمان الوقت أولاً
+            // 1. قناة الفحص أولاً
             await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
             await sleep(3000);
             
             await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
             await sleep(3000);
             
-            // 2. قناة اللعب: تفعيل المهام والإيداع/الهدية فور التشغيل مباشرة
+            // 2. قناة اللعب (الرئيسية أو الفرعية للحساب المخصص لها)
             await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
             await sleep(3000);
             
-            await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, depositCommand);
+            await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
             await sleep(3000);
             
-            // 3. قناة الفحص: إطلاق أمر قراءة حالة الصناديق الرئيسي (مع الفحص والـ Retry الذكي للتعليق)
+            // 3. إطلاق أمر الفحص الميكانيكي الأول لتحديد وتوزيع الحسابات على الحالات الثلاث
             await sendBoxCommand();
             
-            // 4. انطلاق الدورات الثلاث التزامنية بكفاءة واستمرارية تامة
+            // 4. انطلاق الدورات الثلاث التزامنية بكفاءة واستقرار تام
             playLoop();
             openBoxLoop();
             checkLoop();
@@ -303,5 +318,5 @@ ACCOUNTS.forEach((acc, i) => {
 
     setTimeout(() => {
         createBot(finalConfig);
-    }, i * 15000); 
+    }, i * 15000); // فاصل زمني 15 ثانية لضمان انسيابية دخول الأوامر وتفادي ضغط السيرفر
 });
